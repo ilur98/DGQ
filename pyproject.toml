@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dgq"
+version = "0.1.0"
+description = "An efficient and accurate low-bit quantization(A8W4) method for LLMs."
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+]
+dependencies = [
+    "safetensors==0.3.1", "datasets==2.10.1", "sentencepiece",
+    "torch", "torchvision", 
+    "transformers", 
+    "lm_eval", "texttable",
+    "toml", "attributedict",
+    "protobuf", "numpy", "accelerate==0.20.3"
+]
+
+[tool.setuptools.packages.find]
+exclude = ["results*", "scripts*", "examples*"]
+
+[tool.wheel]
+exclude = ["results*", "scripts*", "examples*"]
