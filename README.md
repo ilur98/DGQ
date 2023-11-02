@@ -30,7 +30,7 @@ We provide a sample script to run DGQ('./llama7b.sh')
 
 ## Reference
 
-If you find AWQ useful or relevant to your research, please kindly cite our paper:
+If you find our work useful or relevant to your research, please kindly cite our paper:
 
 ```
 @article{zhang2023dual,
