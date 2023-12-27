@@ -3,7 +3,7 @@
 ## features and milestone:
 - DGQ algorithm for A8W4 models.
 - Memory-efficient Linear Layers for FakeQuant For Pytorch.
-- Efficient CUTLASS kernel implementation for fast inference. [We are reconstructing code and will release before December.]
+- Efficient CUTLASS kernel implementation for fast inference. 
 - Edge Device Support. [We are working with it.]
 
 
