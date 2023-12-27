@@ -78,8 +78,8 @@ def prepare_hook(layer, inps, qconfig, inps_kwargs):
             handles.append(layer.self_attn.v_quant.register_forward_hook(sta_batch_qkv))
             handles.append(layer.self_attn.q_quant.register_forward_hook(sta_batch_qkv))
     elif isinstance(layer, OPTDecoderLayer):
-        handles.append(layer.mlp.down_proj.register_forward_hook(sta_batch1))
-        handles.append(layer.self_attn.o_proj.register_forward_hook(sta_batch1))
+        handles.append(layer.fc2.register_forward_hook(sta_batch1))
+        handles.append(layer.self_attn.out_proj.register_forward_hook(sta_batch1))
         if qconfig['kvquant']:
             handles.append(layer.self_attn.k_quant.register_forward_hook(sta_batch_qkv))
             handles.append(layer.self_attn.v_quant.register_forward_hook(sta_batch_qkv))

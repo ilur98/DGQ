@@ -120,6 +120,8 @@ class QuantLinear(nn.Module):
         else:
             self.qweight = intweight
     def prepare_actfun(self):
+        if self.qconfig["act_quant"] is None:
+            return
         if self.qconfig["act_quant"]["method"] == "static":
             self.act_quant = partial(quantize_activation_static,absmax=self.amax)
             # self.act_quant = quantize_activation_static
@@ -127,14 +129,12 @@ class QuantLinear(nn.Module):
             self.act_quant = quantize_activation_per_tensor_absmax
         elif self.qconfig["act_quant"]["method"] == "per_token":
             self.act_quant = quantize_activation_per_token_absmax
-        elif self.qconfig["act_quant"]["method"] == "no":
-            return
         else:
             raise NotImplemented
     def packW4W8(self, scales, zeros, scales8):
         scales = scales.contiguous().char().reshape(-1, 1)
         self.wscales = scales
-        zeros = zeros.contiguous().bfloat16().reshape(-1, 1)
+        zeros = zeros.contiguous().char().reshape(-1, 1)
         self.wzeros = zeros
         scales8 = scales8.contiguous().bfloat16().reshape(-1, 1)
         self.wscales8 = scales8.reshape(-1, 1)

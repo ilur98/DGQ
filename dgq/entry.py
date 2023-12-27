@@ -2,13 +2,14 @@ import argparse
 import numpy as np
 import torch
 import torch.nn as nn
-
+import time
+import lm_eval
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 from texttable import Texttable
 from dgq.quant.quant_sequence import PTQ
-from dgq.utils.datautils import get_loaders
-from dgq.utils.evalutils import model_eval
-from dgq.utils.loadutils import load_quant
+from dgq.utils.datautils import get_loaders, prepare_mmlu
+from dgq.utils.evalutils import model_eval, total_model_eval, mmlu_eval
+from dgq.utils.loadutils import load_quant, inference_model
 from dgq.utils.modelutils import convert_model
 
 parser = argparse.ArgumentParser()
@@ -24,7 +25,6 @@ parser.add_argument('--save', type=str, default='', help='Save quantized checkpo
 parser.add_argument('--save_safetensors', type=str, default='', help='Save quantized `.safetensors` checkpoint under this name.')
 parser.add_argument('--load', type=str, default='', help='Load quantized model.')
 
-parser.add_argument('--eval', action='store_true', help='evaluate quantized model.')
 parser.add_argument('--benchmark', type=int, default=0, help='Number of tokens to use for benchmarking.')
 parser.add_argument('--check', action='store_true', help='Whether to compute perplexity during benchmarking for verification.')
 parser.add_argument('--groupsize', type=int, default=-1, help='Groupsize to use for quantization; default uses full row.')
@@ -39,6 +39,11 @@ parser.add_argument('--meanact', action='store_true', help='whether to   ')
 parser.add_argument('--observe', action='store_true', help='whether to   ') 
 parser.add_argument('--nearest', action='store_true', help='whether to   ')
 parser.add_argument('--w4w8', action='store_true', help='wheter to open dual grained quantization')
+
+parser.add_argument('--eval', action='store_true', help='evaluate quantized model.')
+parser.add_argument('--mmlu_eval', type=str, default="no", help="mmlu evaluation.")
+parser.add_argument('--csqa_eval', type=str, default="no", help="csqa evaluation.")
+parser.add_argument('--inference_mod', action='store_true', help='whether to   ')
 args = parser.parse_args()
 
 
@@ -83,12 +88,16 @@ def main():
     model = prepare_model(args.model)
     qconfig = generate_qconfig(args)
     convert_model(model, qconfig)
-    # print(model)
+    print(args)
     enc, _ = get_loaders(args.dataset, args.nsamples, model=args.model)
     if args.load:
         load_quant(model, args.load)
+        if hasattr(args, "inference_mod"):
+            model = inference_model(model)
     else:
+        tick = time.time()
         PTQ(model, enc, qconfig, args.nsamples)
+        print(time.time() - tick)
         if args.save_safetensors:
             model = model.cpu()
             from safetensors.torch import save_file as safe_save
@@ -103,8 +112,12 @@ def main():
         for dataset in datasets:
             _, testloader = get_loaders(dataset, seed=args.seed, model=args.model, seqlen=model.seqlen)
             print(dataset)
-            model_eval(model, testloader, torch.device('cuda:0'), local_args=args)
-
-
+            # model_eval(model, testloader, torch.device('cuda:0'), local_args=args)
+            total_model_eval(model, testloader, torch.device('cuda:0'), local_args=args)
+    if args.mmlu_eval != 'no':
+        model = model.to(torch.device('cuda:0'))
+        dataset_test, testloader, abcd_idx = prepare_mmlu(args.model, args.mmlu_eval)
+        result = mmlu_eval(model, dataset_test, testloader, abcd_idx, torch.device('cuda:0'), local_args=args)
+        print(result)
 if __name__ == '__main__':
     main()

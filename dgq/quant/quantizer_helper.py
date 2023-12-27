@@ -167,19 +167,19 @@ class QuantizerHelper:
             for i in range(grid):
                 ratio = 1.02 - (i+1) / grid*0.82
                 # W_max = torch.abs(W_t).max() * ratio
-                # W_t = W.clamp(-W_max, W_max)
+                # 
                 W_max = W.abs().amax(dim=-1, keepdim=True) * ratio
                 qscale_8 = W_max / (2 ** (8-1) - 1)
                 qscale = torch.round(best_scale / qscale_8).clamp(min=1.)
                 # qtensor = torch.clamp(torch.round(W_t/qscale)+qzero,0,self.quantizer.maxq)
-                int_max = torch.round(127 / qscale)
+                int_max = torch.floor(127 / qscale)
                 # upper = torch.minimum(15, best_zero+int_max)
                 # lower = torch.maximum(0, best_zero-int_max)
                 inp_t = self.inp1
                 upper = torch.clamp(best_zero+int_max, max=15.).reshape(-1, 1)
                 lower = torch.clamp(best_zero-int_max, min=0.).reshape(-1, 1)
                 qscale_q = (qscale * qscale_8).reshape(-1, 1)
-                W_t = W.view(-1, groupsize)
+                W_t = W.clamp(-W_max, W_max).view(-1, groupsize)
                 q_tensor = torch.clamp(torch.round(W_t/qscale_q) + best_zero.reshape(-1, 1), lower, upper) 
                 W_qt = qscale_q*(q_tensor-best_zero.reshape(-1, 1))
                 W_qt = W_qt.view(org_shape)
@@ -188,8 +188,9 @@ class QuantizerHelper:
                 best_idx = (best > mse).view(-1)
                 best[best_idx] = mse[best_idx]
                 best_scale8[best_idx] = qscale_8[best_idx].view(-1) 
+            W = W.clamp(best_scale8.view(-1, 1) * -127, best_scale8.view(-1, 1) * 127)
             best_scale = torch.round(best_scale / best_scale8.view(-1, 1)).clamp(min=1.)
-            int_max = torch.round(127 / best_scale)
+            int_max = torch.floor(127 / best_scale)
             best_scale_q = (best_scale * best_scale8.view(-1, 1)).reshape(-1, 1)
             upper = torch.clamp(best_zero+int_max, max=15.).reshape(-1, 1)
             lower = torch.clamp(best_zero-int_max, min=0.).reshape(-1, 1)

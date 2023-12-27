@@ -259,7 +259,7 @@ def LlamaAttention_QKVQuant(module, qconfig):
         padding_mask: Optional[torch.LongTensor] = None,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor], Optional[Tuple[torch.Tensor]]]:
         bsz, q_len, _ = hidden_states.size()
-
+        torch.save(hidden_states, "1_h.pth")
         if self.config.pretraining_tp > 1:
             key_value_slicing = (self.num_key_value_heads * self.head_dim) // self.config.pretraining_tp
             query_slices = self.q_proj.weight.split(
@@ -285,7 +285,9 @@ def LlamaAttention_QKVQuant(module, qconfig):
         query_states = query_states.view(bsz, q_len, self.num_heads, self.head_dim).transpose(1, 2)
         key_states = key_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
         value_states = value_states.view(bsz, q_len, self.num_key_value_heads, self.head_dim).transpose(1, 2)
-
+        # torch.save(value_states, "1_v.pth")
+        # torch.save(key_states, "1_k.pth")
+        # torch.save(query_states, "1_q.pth")
         kv_seq_len = key_states.shape[-2]
         if past_key_value is not None:
             kv_seq_len += past_key_value[0].shape[-2]
@@ -308,7 +310,7 @@ def LlamaAttention_QKVQuant(module, qconfig):
         value_states = self.v_quant(value_states).to(value_states.dtype)
 
         attn_weights = torch.matmul(query_states, key_states.transpose(2, 3)) / math.sqrt(self.head_dim)
-
+        # torch.save(attn_weights, "1_a.pth")
         if attn_weights.size() != (bsz, self.num_heads, q_len, kv_seq_len):
             raise ValueError(
                 f"Attention weights should be of size {(bsz, self.num_heads, q_len, kv_seq_len)}, but is"
@@ -331,10 +333,10 @@ def LlamaAttention_QKVQuant(module, qconfig):
                 f"`attn_output` should be of size {(bsz, self.num_heads, q_len, self.head_dim)}, but is"
                 f" {attn_output.size()}"
             )
-
+        
         attn_output = attn_output.transpose(1, 2).contiguous()
         attn_output = attn_output.reshape(bsz, q_len, self.hidden_size)
-
+        
         if self.config.pretraining_tp > 1:
             attn_output = attn_output.split(self.hidden_size // self.config.pretraining_tp, dim=2)
             o_proj_slices = self.o_proj.weight.split(self.hidden_size // self.config.pretraining_tp, dim=1)
@@ -344,7 +346,7 @@ def LlamaAttention_QKVQuant(module, qconfig):
 
         if not output_attentions:
             attn_weights = None
-
+        # torch.save(attn_output, "1_o.pth")
         return attn_output, attn_weights, past_key_value
     module.forward = types.MethodType(newforward, module)
 
